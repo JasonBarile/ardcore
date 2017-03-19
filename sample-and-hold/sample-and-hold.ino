@@ -1,8 +1,6 @@
 
 // Sample and Hold
 //
-//
-//
 //  I/O Usage:
 //    Knob 1: scale selction
 //    Knob 2: range of octaves
@@ -26,8 +24,11 @@
 //    D5-D12 = Ardcore DAC output (pin5 is LSB, 12 is MSB)
 //
 //  Output Expander:  not used
+//
+//  Tip: Make sure the A2 knob is turned fully CW to allow
+//       reading the voltage on A2 input without attenuation.
+//
 
-const int ARDCORE_A2      = 2;
 const int ARDCORE_CLK     = 2;
 const int ARDCORE_D0      = 3;
 const int ARDCORE_D1      = 4;
@@ -35,6 +36,7 @@ const int ARDCORE_DAC_LSB = 5;
 
 bool noteChanged = true;
 int  sampledCV = 0;
+int  currentValue = 0;
 
 void setup() {
 
@@ -51,17 +53,21 @@ void setup() {
   // set up the CLK trigger input
   attachInterrupt(digitalPinToInterrupt(ARDCORE_CLK), sample, RISING);
 
-  Serial.begin(9600);
-  Serial.println("Ardcore Sample and Hold");
+  Serial.begin(57600);
+  Serial.println("Sample and hold");
 }
 
 void loop() {
+  
   if (noteChanged)
   {
     noteChanged = false;
 
     // sample the input
-    sampledCV = map(analogRead(ARDCORE_A2), 0, 1023, 0, 255);
+    int v = deJitter(analogRead(2), currentValue);
+
+    sampledCV = map(v, 0, 1023, 0, 255);
+    Serial.println(sampledCV);
 
     // write it to the DAC:
     dacOutput(byte(sampledCV));
@@ -70,6 +76,8 @@ void loop() {
     digitalWrite(ARDCORE_D0, HIGH);
     delay(20);
     digitalWrite(ARDCORE_D0, LOW);
+
+    currentValue = v;
   }
 }
 
@@ -87,3 +95,12 @@ void dacOutput(byte v)
   PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
+//  deJitter(int, int) - smooth jitter input
+//  ----------------------------------------
+int deJitter(int v, int test)
+{
+  if (abs(v - test) > 8) {
+    return v;
+  }
+  return test;
+}
