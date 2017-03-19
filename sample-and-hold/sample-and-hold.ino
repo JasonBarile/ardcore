@@ -2,8 +2,10 @@
 // Sample and Hold
 //
 //  I/O Usage:
-//    Knob 1: scale selction
-//    Knob 2: range of octaves
+//    Knob A0: not used
+//    Knob A1: not used
+//    Knob A2: attenuates input CV on A2 jack
+//    Knob A3: not used
 //    Analog In 1: input cv to be sampled
 //    Analog In 2:
 //    Digital Out 1: LED lights when have a new quantised note
@@ -34,9 +36,9 @@ const int ARDCORE_D0      = 3;
 const int ARDCORE_D1      = 4;
 const int ARDCORE_DAC_LSB = 5;
 
-bool noteChanged = true;
-int  sampledCV = 0;
-int  currentValue = 0;
+bool noteChanged          = true;
+int  sampledCV            = 0;
+int  currentValue         = 0;
 
 void setup() {
 
@@ -62,9 +64,11 @@ void loop() {
   if (noteChanged)
   {
     noteChanged = false;
+    delay(5);               // slight delay to allow CV to change after clock
 
     // sample the input
     int v = deJitter(analogRead(2), currentValue);
+    currentValue = v;
 
     sampledCV = map(v, 0, 1023, 0, 255);
     Serial.println(sampledCV);
@@ -76,8 +80,6 @@ void loop() {
     digitalWrite(ARDCORE_D0, HIGH);
     delay(20);
     digitalWrite(ARDCORE_D0, LOW);
-
-    currentValue = v;
   }
 }
 
