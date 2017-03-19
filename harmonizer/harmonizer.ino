@@ -10,8 +10,8 @@
 //    Analog In 2:
 //    Digital Out 1: LED lights when have a new quantised note
 //    Digital Out 2:
-//    Clock In: trigger signal to begin a sample
-//    Analog Out: held CV
+//    Clock In: trigger to change notes
+//    Analog Out: output CV
 //
 //  Arduino Pin Usage:
 //
