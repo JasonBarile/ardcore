@@ -36,7 +36,7 @@ const int ARDCORE_D0      = 3;
 const int ARDCORE_D1      = 4;
 const int ARDCORE_DAC_LSB = 5;
 
-bool noteChanged          = true;
+volatile bool noteChanged = true;
 int  sampledCV            = 0;
 int  currentValue         = 0;
 int  semitones            = 0;    
