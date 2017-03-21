@@ -47,6 +47,7 @@ int currentValue = 0;
 int attack = 0;
 int decay = 0;
 int sustain = 0;
+int gate_level = 0;
 
 // delta per iteration to apply to the output level
 float attack_delta = 0;
@@ -70,9 +71,7 @@ void setup() {
     digitalWrite(ARDCORE_DAC_LSB + i, LOW);
   }
 
-  // set up the CLK interrupt handlers
   attachInterrupt(digitalPinToInterrupt(ARDCORE_CLK), onGateOn, RISING);
-  attachInterrupt(digitalPinToInterrupt(ARDCORE_CLK), onGateOff, FALLING);
 
   Serial.begin(57600);
   Serial.println("ADSR Envelope Generator");
@@ -140,13 +139,9 @@ void loop() {
 
     case SUSTAIN:
 
-      // hold the DAC at sustain level until gate_off is triggered
-
-      // TODO: is it possible to ever miss the gate_off interrupt and thus never get past this stage?
-      
-      if (gate_off) 
-      {
-        gate_off = false;
+      // hold the DAC at sustain level until gate level drops back down under 300  (roughly 1.5v)
+      gate_level = analogRead(ARDCORE_CLK);
+      if (gate_level < 300) {
         loops_in_stage = 0;
         stage = RELEASE;
       }
@@ -182,11 +177,6 @@ void loop() {
 void onGateOn()
 {
   gate_on = true;
-}
-
-void onGateOff() 
-{
-  gate_off = true;
 }
 
 //  dacOutput(byte) - deal with the DAC output
