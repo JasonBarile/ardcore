@@ -41,8 +41,8 @@ const byte RELEASE         = 4;
 
 byte stage = ADSR_IDLE;    // the current stage of the envelope
 
-volatile bool gate_on = false;
-volatile bool gate_off = false;
+volatile int clk_state = LOW;
+
 int currentValue = 0;
 int attack = 0;
 int decay = 0;
@@ -71,7 +71,7 @@ void setup() {
     digitalWrite(ARDCORE_DAC_LSB + i, LOW);
   }
 
-  attachInterrupt(digitalPinToInterrupt(ARDCORE_CLK), onGateOn, RISING);
+  attachInterrupt(digitalPinToInterrupt(ARDCORE_CLK), isr, CHANGE);
 
   Serial.begin(57600);
   Serial.println("ADSR Envelope Generator");
@@ -79,17 +79,15 @@ void setup() {
 
 void loop() {
 
-  if (gate_on)
+  if (clk_state == HIGH)
   {
-    gate_on = false;
-
     // Blink the Ardcore D0 LED to indicate start of cycle
     digitalWrite(ARDCORE_D0, HIGH);
     delay(10);
     digitalWrite(ARDCORE_D0, LOW);
 
     // reading analog input takes ~100us (0.0001s)
-    // reading all 4 takes ~400us (0.0004s)
+    // reading all 4 takes ~400us (0.0004s) + the blink puts us at a min time of (0.0104s)
 
     // sample the inputs:
     attack = constrain(analogRead(0), 1, 1023);
@@ -108,40 +106,27 @@ void loop() {
   // Talkin' 'bout my (envelope) generation...
   switch(stage) {
     case ATTACK:
-
-      if (loops_in_stage >= attack) {
+      if (loops_in_stage++ >= attack) {
         loops_in_stage = 0;
         stage = DECAY;
       }
-      else 
-      {
-        loops_in_stage++;
-      }
       
       output_level += attack_delta;
-      
       break;
     
     case DECAY:
-
-      if (loops_in_stage >= decay) {
+      if (loops_in_stage++ >= decay) {
         loops_in_stage = 0;
         stage = SUSTAIN;
       }
-      else 
-      {
-        loops_in_stage++;
-      }
       
       output_level -= decay_delta;
-
       break;
 
     case SUSTAIN:
 
       // hold the DAC at sustain level until gate level drops back down under 300  (roughly 1.5v)
-      gate_level = analogRead(ARDCORE_CLK);
-      if (gate_level < 300) {
+      if (clk_state == LOW) {
         loops_in_stage = 0;
         stage = RELEASE;
       }
@@ -151,13 +136,9 @@ void loop() {
     case RELEASE:
 
       // Why don't you all f...f...fade away...
-      if (loops_in_stage >= rel) {
+      if (loops_in_stage++ >= rel) {
         loops_in_stage = 0;
         stage = ADSR_IDLE;
-      }
-      else 
-      {
-        loops_in_stage++;
       }
       
       output_level -= release_delta;
@@ -170,13 +151,12 @@ void loop() {
   }
 
   dacOutput(byte(output_level));
-
 }
 
 // CLK input interrupt handler
-void onGateOn()
+void isr()
 {
-  gate_on = true;
+  clkstate = !clk_state;
 }
 
 //  dacOutput(byte) - deal with the DAC output
